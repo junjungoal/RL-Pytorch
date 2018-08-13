@@ -20,7 +20,8 @@ def main():
 @click.option('-b', '--batch_size', help='Batch size', default=32)
 @click.option('-r', '--random_step', help='Random Steps', default=50000)
 @click.option('--log_dir', help='log directory', default=None)
-def dqn(env, learning_rate, batch_size, random_step, log_dir):
+@click.option('--weight_dir', help='weight directory', defaults=None)
+def dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir):
     print('Env Name: ', env)
     env = gym.make(env)
     print('Action Space: ', env.action_space.n)
@@ -30,7 +31,8 @@ def dqn(env, learning_rate, batch_size, random_step, log_dir):
                 nn.MSELoss(),
                 optim.RMSprop,
                 lr=learning_rate,
-                log_dir=log_dir)
+                log_dir=log_dir,
+                weight_dir=weight_dir)
     agent.train(batch_size=batch_size, random_step=random_step)
 
 @main.command()
@@ -39,7 +41,8 @@ def dqn(env, learning_rate, batch_size, random_step, log_dir):
 @click.option('-b', '--batch_size', help='Batch size', default=32)
 @click.option('-r', '--random_step', help='Random Steps', default=50000)
 @click.option('--log_dir', help='log directory', default=None)
-def double_dqn(env, learning_rate, batch_size, random_step, log_dir):
+@click.option('--weight_dir', help='weight directory', defaults=None)
+def double_dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir):
     print('Env Name: ', env)
     env = gym.make(env)
     print('Action Space: ', env.action_space.n)
@@ -49,7 +52,8 @@ def double_dqn(env, learning_rate, batch_size, random_step, log_dir):
                 nn.MSELoss(),
                 optim.RMSprop,
                 lr=learning_rate,
-                log_dir=log_dir)
+                log_dir=log_dir,
+                weight_dir=weight_dir)
     agent.train(batch_size=batch_size, random_step=random_step)
 
 

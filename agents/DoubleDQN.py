@@ -22,7 +22,7 @@ dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTens
 dlongtype = torch.cuda.LongTensor if torch.cuda.is_available() else torch.LongTensor
 
 class DoubleDQN(object):
-    def __init__(self, env, q_net, loss_func, opt, lr=0.00025, imsize=(84, 84), gamma=0.99, tau=0.001, buffer_size=1e6, log_dir=None):
+    def __init__(self, env, q_net, loss_func, opt, lr=0.00025, imsize=(84, 84), gamma=0.99, tau=0.001, buffer_size=1e6, log_dir=None, weight_dir=None):
         self.env = env
         self.q_net = q_net.type(dtype)
         self.target_q_net = copy.deepcopy(q_net).type(dtype)
@@ -41,7 +41,8 @@ class DoubleDQN(object):
         self.train_error_list = []
         self._buffer = ReplayBuffer([1, ], self._state_size, imsize, buffer_size)
 
-        self.log_dir = log_dir
+        self.log_dir = log_dir if log_dir is not None else "./logs/"
+        self.weight_dir = weight_path if weight_path is not None else "./checkpoints/"
 
     def update_params(self):
         self.target_q_net = copy.deepcopy(self.q_net)
@@ -68,10 +69,7 @@ class DoubleDQN(object):
               test_period=10):
 
         LOG_EVERY_N_STEPS = 1000
-        if self.log_dir is None:
-            logger = Logger('./logs/')
-        else:
-            logger = Logger(self.log_dir)
+        logger = Logger(self.log_dir)
 
         state = self.env.reset()
         steps = 0
@@ -184,6 +182,9 @@ class DoubleDQN(object):
 
             msg = ("episode {:03d} avg_loss:{:6.3f} total_reward [train:{:5.3f} test:-] average_reward {:5.3f} best_reward {:5.3f} e-greedy:{:5.3f}".format(
                 e, float(loss) / ((j + 1)//train_frequency), total_reward, mean_reward, best_reward, eps_greedy))
+
+            if e % 1000 == 0:
+                torch.save(self.q_net, os.path.join(self.weight_dir, "model_{:d}.h5".format(e)))
 
             bar.set_description(msg)
             bar.update(0)
