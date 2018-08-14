@@ -2,7 +2,10 @@ import sys, os
 import click
 from agents.DQN import DQN
 from agents.DoubleDQN import DoubleDQN
+from agents.DuelingDQN import DuelingDQN
+
 from models.QNet import QNet
+from models.DuelingQNet import DuelingQNet
 
 import gym
 import torch
@@ -20,7 +23,7 @@ def main():
 @click.option('-b', '--batch_size', help='Batch size', default=32)
 @click.option('-r', '--random_step', help='Random Steps', default=50000)
 @click.option('--log_dir', help='log directory', default=None)
-@click.option('--weight_dir', help='weight directory', defaults=None)
+@click.option('--weight_dir', help='weight directory', default=None)
 def dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir):
     print('Env Name: ', env)
     env = gym.make(env)
@@ -41,7 +44,7 @@ def dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir):
 @click.option('-b', '--batch_size', help='Batch size', default=32)
 @click.option('-r', '--random_step', help='Random Steps', default=50000)
 @click.option('--log_dir', help='log directory', default=None)
-@click.option('--weight_dir', help='weight directory', defaults=None)
+@click.option('--weight_dir', help='weight directory', default=None)
 def double_dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir):
     print('Env Name: ', env)
     env = gym.make(env)
@@ -57,5 +60,25 @@ def double_dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir)
     agent.train(batch_size=batch_size, random_step=random_step)
 
 
+@main.command()
+@click.option('-e', '--env', help='environment to be trained', required=True)
+@click.option('-l', '--learning_rate', help='Learning rate', default=0.00025)
+@click.option('-b', '--batch_size', help='Batch size', default=32)
+@click.option('-r', '--random_step', help='Random Steps', default=50000)
+@click.option('--log_dir', help='log directory', default=None)
+@click.option('--weight_dir', help='weight directory', default=None)
+def dueling_dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir):
+    print('Env Name: ', env)
+    env = gym.make(env)
+    print('Action Space: ', env.action_space.n)
+    print('State Shape:', env.render(mode='rgb_array').shape)
+    agent = DuelingDQN(env,
+                DuelingQNet(env.action_space.n),
+                nn.MSELoss(),
+                optim.RMSprop,
+                lr=learning_rate,
+                log_dir=log_dir,
+                weight_dir=weight_dir)
+    agent.train(batch_size=batch_size, random_step=random_step)
 if __name__ == '__main__':
     main()

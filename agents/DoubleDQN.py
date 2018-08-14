@@ -42,7 +42,7 @@ class DoubleDQN(object):
         self._buffer = ReplayBuffer([1, ], self._state_size, imsize, buffer_size)
 
         self.log_dir = log_dir if log_dir is not None else "./logs/"
-        self.weight_dir = weight_path if weight_path is not None else "./checkpoints/"
+        self.weight_dir = weight_dir if weight_path is not None else "./checkpoints/"
 
     def update_params(self):
         self.target_q_net = copy.deepcopy(self.q_net)
