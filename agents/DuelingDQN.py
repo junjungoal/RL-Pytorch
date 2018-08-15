@@ -15,6 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from utils.replay_buffer import ReplayBuffer
+from utils.prioritized_replay_buffer import PrioritizedReplayBuffer
 from PIL import Image
 from time import sleep
 
@@ -40,7 +41,7 @@ class DuelingDQN(object):
         self.train_reward_list = []
         self.test_reward_list = []
         self.train_error_list = []
-        self._buffer = ReplayBuffer([1, ], self._state_size, imsize, buffer_size)
+        #self._buffer = ReplayBuffer([1, ], self._state_size, imsize, buffer_size)
 
         self.log_dir = log_dir if log_dir is not None else "./logs/"
         self.weight_dir = weight_dir if weight_dir is not None else "./checkpoints/"
@@ -68,6 +69,8 @@ class DuelingDQN(object):
               train_frequency=4,
               test_eps_greedy=0.05,
               test_period=10):
+
+        self._buffer = PrioritizedReplayBuffer([1, ], self._state_size, self._imsize, 0, episode, buffer_size=self.buffer_size)
 
         LOG_EVERY_N_STEPS = 1000
         logger = Logger(self.log_dir)
@@ -123,7 +126,7 @@ class DuelingDQN(object):
                 state = next_state
 
                 if len(self._buffer) > batch_size and j % train_frequency == 0:
-                    train_prestate, train_action, train_reward, train_state, train_terminal = self._buffer.get_minibatch(batch_size)
+                    train_prestate, train_action, train_reward, train_state, train_terminal, _ = self._buffer.get_minibatch(batch_size)
 
                     ## target
                     x = torch.from_numpy(np.expand_dims(train_state, axis=3).transpose((0, 3, 1, 2))/ 255.).type(dtype)

@@ -78,18 +78,18 @@ class PrioritizedReplayBuffer:
         self._init_beta = init_beta
         self._beta_grad = (1. - init_beta) / (total_step - random_step)
 
-        if not ReplayBuffer.THREAD_STARTED:
+        if not PrioritizedReplayBuffer.THREAD_STARTED:
             # todo: adjust number of threads
             for i in range(4):
                 d = DecompThread()
                 d.daemon = True
                 d.start()
-            ReplayBuffer.THREAD_STARTED = True
+            PrioritizedReplayBuffer.THREAD_STARTED = True
         self._index = 0
         self._full = False
 
-    def store(self, prestate, action, reward, state, terminal, priority):
-        self.add(prestate, action, reward, state, terminal, priority)
+    def store(self, prestate, action, reward, state, terminal):
+        self.add(prestate, action, reward, state, terminal)
         if self._size < self._index:
             self._full = True
         if not self._full:
@@ -108,9 +108,34 @@ class PrioritizedReplayBuffer:
                 self.upheap(parent_id)
 
     def downheap(self, i):
-        raise NotImplemented
+        if i > len(self):
+            greatest = i
+            left, right = i * 2, i * 2 + 1
+            if left < len(self) and self._priority_queue[left] > self._priority_queue[right]:
+                greatest = left
+            if right < len(self) and self._priority_queue[right] > self._priority_queue[left]:
+                greatest = right
 
-    def add(self, prestate, action, reward, state, terminal, priority):
+            if greatest != i:
+                tmp = self._priority_queue[i]
+                self._priority_queue[i] = self._priority_queue[greatest]
+                self._priority_queue[greatest] = tmp
+                tmp_toc = self._toc[i]
+                self._toc[i] = self.toc[greatest]
+                self._toc[greatest] = tmp_toc
+                self.downheap(greatest)
+
+    def update(self, priority, index):
+        self._priority_queue[index] = priority
+        self.upheap(index)
+        self.downheap(index)
+
+    def update_priority(self, indices, delta):
+        for i in range(indices):
+
+
+    def add(self, prestate, action, reward, state, terminal):
+        priority = self._priority_queue[0] if len(self) > 0 else 1
         self._priority_queue[self._index] = priority
         # todo: reuse buf when overwriting to the same index
         self._f.seek(0, 2)
@@ -212,7 +237,7 @@ class PrioritizedReplayBuffer:
             states.append(np.array(Image.fromarray(state.reshape(self._state_space_shape).astype(np.uint8)).convert('L').resize(self._imsize)))
             terminals[i] = terminal
 
-        return np.array(prestates, dtype=np.float32), actions, rewards, np.array(states, dtype=np.float32), terminals, weights
+        return np.array(prestates, dtype=np.float32), actions, rewards, np.array(states, dtype=np.float32), terminals, rank_list, weights
 
     def __len__(self):
         return self._index if not self._full else self._size
