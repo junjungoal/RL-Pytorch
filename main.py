@@ -20,7 +20,7 @@ def main():
 @click.option('-b', '--batch_size', help='Batch size', default=32)
 @click.option('-r', '--random_step', help='Random Steps', default=50000)
 @click.option('--log_dir', help='log directory', default=None)
-@click.option('--weight_dir', help='weight directory', defaults=None)
+@click.option('--weight_dir', help='weight directory', default=None)
 def dqn(env, learning_rate, batch_size, random_step, log_dir, weight_dir):
     print('Env Name: ', env)
     env = gym.make(env)
