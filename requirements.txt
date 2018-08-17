@@ -1,0 +1,7 @@
+numpy
+torch
+gym
+click
+tensorflow
+Pillow
+
