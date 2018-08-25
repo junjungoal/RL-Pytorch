@@ -1,3 +1,4 @@
+
 # coding: utf-8
 import sys, os
 sys.path.append("..")
@@ -14,6 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from utils.replay_buffer import ReplayBuffer
+from utils.prioritized_replay_buffer import PrioritizedReplayBuffer
 from PIL import Image
 from time import sleep
 
@@ -21,7 +23,7 @@ USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 dlongtype = torch.cuda.LongTensor if torch.cuda.is_available() else torch.LongTensor
 
-class DQN(object):
+class DuelingDQN(object):
     def __init__(self, env, q_net, loss_func, opt, lr=0.00025, imsize=(84, 84), gamma=0.99, tau=0.001, buffer_size=1e6, log_dir=None, weight_dir=None):
         self.env = env
         self.q_net = q_net.type(dtype)
@@ -39,10 +41,10 @@ class DQN(object):
         self.train_reward_list = []
         self.test_reward_list = []
         self.train_error_list = []
-        self._buffer = ReplayBuffer([1, ], self._state_size, imsize, buffer_size)
+        #self._buffer = ReplayBuffer([1, ], self._state_size, imsize, buffer_size)
 
         self.log_dir = log_dir if log_dir is not None else "./logs/"
-        self.weight_dir = weight_dir if weight_path is not None else "./checkpoints/"
+        self.weight_dir = weight_dir if weight_dir is not None else "./checkpoints/"
 
     def update_params(self):
         self.target_q_net = copy.deepcopy(self.q_net)
@@ -67,6 +69,8 @@ class DQN(object):
               train_frequency=4,
               test_eps_greedy=0.05,
               test_period=10):
+
+        self._buffer = PrioritizedReplayBuffer([1, ], self._state_size, self._imsize, 0, episode, buffer_size=self.buffer_size)
 
         LOG_EVERY_N_STEPS = 1000
         logger = Logger(self.log_dir)
@@ -104,7 +108,6 @@ class DQN(object):
                     x = np.array(img.resize(self._imsize))
                     x = torch.from_numpy(np.expand_dims(x[None, ...].astype(np.float), axis=3).transpose((0, 3, 1, 2))).type(dtype)
                     action = self.q_net(x/255.).max(1)[1].item()
-                    print('Action:', action)
                     # take an action maximizing Q function
                 else:
                     action = self.env.action_space.sample()
@@ -123,11 +126,13 @@ class DQN(object):
                 state = next_state
 
                 if len(self._buffer) > batch_size and j % train_frequency == 0:
-                    train_prestate, train_action, train_reward, train_state, train_terminal = self._buffer.get_minibatch(batch_size)
+                    train_prestate, train_action, train_reward, train_state, train_terminal, _ = self._buffer.get_minibatch(batch_size)
 
                     ## target
                     x = torch.from_numpy(np.expand_dims(train_state, axis=3).transpose((0, 3, 1, 2))/ 255.).type(dtype)
-                    next_q_value = self.target_q_net(x).max(1)[0].detach()
+                    prior_action = self.q_net(x).max(1)[1].detach()
+                    next_q_value = self.target_q_net(x)
+                    next_q_value = next_q_value.gather(1, prior_action.view(-1, 1).type(dlongtype)).view(-1)
                     non_terminal = torch.from_numpy((~train_terminal).astype(np.float)).type(dtype)
                     target = torch.from_numpy(train_reward).type(dtype) + next_q_value  * self.gamma * non_terminal
                     target = target.detach()
@@ -165,7 +170,6 @@ class DQN(object):
             state = self.env.reset()
             self.train_reward_list.append(total_reward)
             self.train_error_list.append(float(loss) / (j + 1))
-
             best_reward = np.max(self.train_reward_list)
             if len(self.train_reward_list) > 100:
                 mean_reward = np.mean(self.train_reward_list[-100:])
@@ -190,6 +194,7 @@ class DQN(object):
             bar.update(0)
             bar.refresh()
             bar.close()
+
 
             sleep(0.05)
 
