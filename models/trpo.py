@@ -4,39 +4,31 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Policy(nn.Module):
-    def __init__(self, n_inputs, n_outputs):
-        super(Policy, self).___init__()
-        self.linear1 = nn.Linear(n_inputs, 64)
-        self.linear2 = nn/Linear(64, 64)
-
-        self.action_mean = nn.Linear(64, num_outputs)
-        self.action_mean.weight.data.mul_(0.1)
-        self.action_mean.bias.data.mul_(0.0)
-
-        self.action_log_std = nn.Parameter(torch.zeros(1, num_outputs))
-
+    def __init__(self, n_outputs):
+        super(Policy, self).__init__()
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
+        self.fc = nn.Linear(2592, 256)
+        self.head = nn.Linear(256, n_outputs)
+        self.softmax = nn.Softmax()
     def forward(self, x):
-        x = F.relu(self.affine1(x))
-        x = F.relu(self.affine2(x))
+        out = F.relu((self.conv1(x)))
+        out = F.relu(self.conv2(out))
+        out = F.relu(self.fc(out.view(out.size(0), -1)))
+        out = self.softmax(self.head(out))
+        return out
 
-        action_mean = self.action_mean(x)
-        action_log_std = self.action_log_std.expand_as(action_mean)
-        action_std = torch.exp(action_log_std)
-
-        return action_mean, action_log_std, action_std
 
 class Value(nn.Module):
-    def __init__(self, num_inputs):
+    def __init__(self):
         super(Value, self).__init__()
-        self.linear1 = nn.Linear(num_inputs, 64)
-        self.linear2 = nn.Linear(64, 64)
-        self.value_head = nn.Linear(64, 1)
-        self.value_head.weight.data.mul_(0.1)
-        self.value_head.bias.data.mul_(0.0)
-
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
+        self.fc = nn.Linear(2592, 256)
+        self.head = nn.Linear(256, 1)
     def forward(self, x):
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-
-        state_values = self.value_head(x)
-        return state_values
+        out = F.relu((self.conv1(x)))
+        out = F.relu(self.conv2(out))
+        out = F.relu(self.fc(out.view(out.size(0), -1)))
+        out = self.head(out)
+        return out
